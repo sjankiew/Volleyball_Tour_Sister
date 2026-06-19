@@ -913,7 +913,7 @@
 
     <script>
         // ==================== CONFIG ====================
-        const API_URL = 'https://script.google.com/macros/s/AKfycbyVWoq4ntRL4ljuH4bRjyrvLacMpLfSA8W73mY6S9pZ7g93A34X4W73AFIjbRZcBYza/exec';
+        const API_URL = '/api/proxy';
         
         const EMOJIS = ['🏐','⚡','🔥','⭐','🦅','🐯','🐉','🦁','🦈','🐊','🐍','🦉','🐺','🐻','🐼','🦊','🐰','🐱','🐶','🐴','🦄','🦋','🌟','💎','👑','🎯','🏆','🥇','🥈','🥉','🏅','🎖️','⚔️','🛡️','🚀','🛸','🌙','☀️','🌊','🔱','⚓','🎪','🎭','🎨','🎸','🎺','🥁','🏹','🎳'];
         
@@ -956,7 +956,8 @@
        async function api(action, method = 'GET', data = null) {
     showLoading(true);
     try {
-        const url = new URL(API_URL);
+        // ใช้ proxy แทนการต่อ Google ตรงๆ
+        const url = new URL(API_URL, window.location.origin);
         url.searchParams.append('action', action);
         
         const options = { 
@@ -964,7 +965,6 @@
             headers: {
                 'Content-Type': 'application/json',
             },
-            // ไม่ต้องใส่ mode: 'cors' เพราะเป็น default อยู่แล้ว
         };
         
         if (method === 'POST' && data) {
