@@ -49,7 +49,7 @@ label { display: block; font-size: 14px; font-weight: 500; color: #6b7280; margi
 .rank-1 { background: linear-gradient(135deg, #fbbf24, #f59e0b); }
 .rank-2 { background: linear-gradient(135deg, #9ca3af, #6b7280); }
 .rank-3 { background: linear-gradient(135deg, #b45309, #92400e); }
-.loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 60; background: rgba(15,12,41,0.8); display: none; }
+.loading { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 60; background: rgba(15,12,41,0.8); }
 .spinner { width: 40px; height: 40px; border: 4px solid rgba(251,191,36,0.3); border-top-color: #fbbf24; border-radius: 50%; animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%) translateY(-20px); background: #1f2937; color: white; padding: 12px 24px; border-radius: 999px; opacity: 0; pointer-events: none; transition: all 0.3s; z-index: 100; }
@@ -60,15 +60,13 @@ label { display: block; font-size: 14px; font-weight: 500; color: #6b7280; margi
 <body>
 
 <header class="glass">
-  <div style="display:flex;align-items:center;justify-content:space-between;max-width:600px;margin:0 auto;">
-    <div style="display:flex;align-items:center;gap:12px;">
-      <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#fbbf24,#f59e0b);display:flex;align-items:center;justify-content:center;">
-        <i class="fas fa-volleyball-ball" style="color:white;font-size:20px;"></i>
-      </div>
-      <div>
-        <h1 style="font-size:18px;font-weight:700;">Volleyball Manager</h1>
-        <p style="font-size:12px;color:rgba(255,255,255,0.5);">จัดการทีมวอลเลย์บอล</p>
-      </div>
+  <div style="display:flex;align-items:center;gap:12px;max-width:600px;margin:0 auto;">
+    <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#fbbf24,#f59e0b);display:flex;align-items:center;justify-content:center;">
+      <i class="fas fa-volleyball-ball" style="color:white;font-size:20px;"></i>
+    </div>
+    <div>
+      <h1 style="font-size:18px;font-weight:700;">Volleyball Manager</h1>
+      <p style="font-size:12px;color:rgba(255,255,255,0.5);">จัดการทีมวอลเลย์บอล</p>
     </div>
   </div>
 </header>
@@ -213,24 +211,123 @@ const POS_CLASS = {unset:'badge-unset',setter:'badge-setter',outside:'badge-outs
 
 let teams=[], players=[], matches=[], curId=null, curFilter='all', selEmoji='🏐', selColor='#ef4444';
 
-async function call(action, method='GET', data=null) {
+// === JSONP CALL ===
+function call(action, callback, method, postData) {
   showLoad(true);
-  try {
-    const url = new URL(API);
-    url.searchParams.append('action', action);
-    const opt = {method, headers:{'Content-Type':'application/json'}};
-    if (method=='POST' && data) opt.body = JSON.stringify(data);
-    const res = await fetch(url.toString(), opt);
-    const json = await res.json();
-    if (json.error) throw new Error(json.error);
-    return json;
-  } catch(e) {
-    toast('เกิดข้อผิดพลาด: '+e.message, true);
-    throw e;
-  } finally {
+  
+  const cbName = 'cb_' + Date.now();
+  const script = document.createElement('script');
+  
+  // สร้าง callback function ชั่วคราว
+  window[cbName] = function(data) {
+    delete window[cbName];
+    if (script.parentNode) script.parentNode.removeChild(script);
     showLoad(false);
+    callback(data);
+  };
+  
+  // สร้าง URL
+  let url = API + '?action=' + action + '&callback=' + cbName;
+  
+  if (method === 'POST' && postData) {
+    // สำหรับ POST ใช้ form submit ผ่าน iframe
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = API + '?action=' + action + '&callback=' + cbName;
+    form.target = 'if_' + cbName;
+    
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'data';
+    input.value = JSON.stringify(postData);
+    form.appendChild(input);
+    
+    const iframe = document.createElement('iframe');
+    iframe.name = 'if_' + cbName;
+    iframe.style.display = 'none';
+    
+    // รอ response จาก iframe
+    iframe.onload = function() {
+      try {
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        const text = doc.body.innerText || doc.body.textContent;
+        const json = JSON.parse(text.replace(/^[^(]*\((.*)\);?$/, '$1'));
+        window[cbName](json);
+      } catch(e) {
+        // ถ้าไม่สามารถอ่านได้ ให้โหลดใหม่
+        setTimeout(function() {
+          if (script.parentNode) script.parentNode.removeChild(script);
+          delete window[cbName];
+          showLoad(false);
+        }, 1000);
+      }
+      document.body.removeChild(iframe);
+      document.body.removeChild(form);
+    };
+    
+    document.body.appendChild(iframe);
+    document.body.appendChild(form);
+    form.submit();
+    return;
   }
+  
+  // GET request ผ่าน script tag
+  script.src = url;
+  script.onerror = function() {
+    delete window[cbName];
+    if (script.parentNode) script.parentNode.removeChild(script);
+    showLoad(false);
+    toast('เกิดข้อผิดพลาดในการเชื่อมต่อ', true);
+  };
+  
+  document.head.appendChild(script);
 }
+
+// === อีกวิธี: ใช้ no-cors fetch + reload ===
+function callSimple(action, callback, method, postData) {
+  showLoad(true);
+  
+  if (method === 'POST' && postData) {
+    // สร้าง form และ submit
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = API + '?action=' + action;
+    form.target = '_blank'; // เปิดใน tab ใหม่ แล้วปิด
+    
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'data';
+    input.value = JSON.stringify(postData);
+    form.appendChild(input);
+    
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+    
+    // รอสักครู่แล้วโหลดข้อมูลใหม่
+    setTimeout(function() {
+      showLoad(false);
+      callback({success: true});
+    }, 1000);
+    return;
+  }
+  
+  // GET ใช้ fetch แบบ no-cors (อ่าน response ไม่ได้ แต่ไม่มี CORS error)
+  fetch(API + '?action=' + action, {mode: 'no-cors'})
+    .then(() => {
+      // ไม่สามารถอ่าน response ได้ ให้โหลดข้อมูลใหม่
+      setTimeout(function() {
+        location.reload();
+      }, 500);
+    })
+    .catch(() => {
+      showLoad(false);
+      toast('เกิดข้อผิดพลาด', true);
+    });
+}
+
+// === วิธีที่ดีที่สุด: ใช้ Google Apps Script Web App แบบ HTML service ===
+// แต่ถ้าต้องการแยก frontend ให้ใช้วิธีนี้แทน
 
 function go(page) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -243,78 +340,76 @@ function go(page) {
   if(page=='matches') loadMatches();
 }
 
-async function loadHome() {
-  const r = await call('getDashboard');
-  const d = r.data;
-  teams = d.teams;
-  
-  // Teams
-  const ht = document.getElementById('home-teams');
-  if (!d.teams.length) ht.innerHTML = '<div class="empty">ยังไม่มีทีม</div>';
-  else ht.innerHTML = d.teams.map(t => `
-    <div class="card" style="display:flex;align-items:center;gap:16px;margin-bottom:12px;">
-      <div class="team-emoji" style="background:${t.color}20;">${t.emoji}</div>
-      <div style="flex:1;">
-        <div style="font-size:18px;font-weight:700;">${t.name}</div>
-        <div style="font-size:13px;color:#6b7280;margin-top:4px;"><i class="fas fa-star" style="color:#f59e0b;margin-right:4px;"></i>${t.points||0} คะแนน</div>
-      </div>
-    </div>
-  `).join('');
-  
-  // Leaderboard
-  const lb = document.getElementById('home-lb');
-  if (!d.leaderboard.length) lb.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.4);padding:20px;">ยังไม่มีการแข่งขัน</div>';
-  else lb.innerHTML = d.leaderboard.map((t,i) => `
-    <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,0.05);margin-bottom:8px;">
-      <div style="width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;${i<3?'color:white;':'color:white;background:rgba(255,255,255,0.1);'}${i==0?'background:linear-gradient(135deg,#fbbf24,#f59e0b);':i==1?'background:linear-gradient(135deg,#9ca3af,#6b7280);':i==2?'background:linear-gradient(135deg,#b45309,#92400e);':''}">
-        ${i<3?'<i class="fas fa-crown" style="font-size:12px;"></i>':i+1}
-      </div>
-      <div style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;background:${t.color||'#6366f1'}20;">${t.emoji}</div>
-      <div style="flex:1;min-width:0;">
-        <div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.teamName}</div>
-        <div style="font-size:12px;color:rgba(255,255,255,0.5);">${t.played} นัด | ${t.setWon}-${t.setLost} เซต</div>
-      </div>
-      <div style="text-align:right;flex-shrink:0;">
-        <div style="font-size:20px;font-weight:700;color:#fbbf24;">${t.points}</div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.4);">คะแนน</div>
-      </div>
-    </div>
-  `).join('');
-  
-  // Stats
-  document.getElementById('stat-teams').textContent = d.totalTeams;
-  document.getElementById('stat-players').textContent = d.totalPlayers;
-  document.getElementById('stat-matches').textContent = d.totalMatches;
-}
-
-async function loadTeams() {
-  const r = await call('getTeams');
-  teams = r.data;
-  const el = document.getElementById('teams-list');
-  if (!teams.length) el.innerHTML = '<div class="empty">ยังไม่มีทีม</div>';
-  else el.innerHTML = teams.map(t => `
-    <div class="card" style="display:flex;align-items:center;gap:16px;">
-      <div style="width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;background:${t.color}20;">${t.emoji}</div>
-      <div style="flex:1;">
-        <div style="font-size:16px;font-weight:700;">${t.name}</div>
-        <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
-          <span style="width:16px;height:16px;border-radius:50%;background:${t.color};display:inline-block;"></span>
-          <span style="font-size:12px;color:#9ca3af;">${t.color}</span>
+function loadHome() {
+  call('getDashboard', function(r) {
+    const d = r.data;
+    teams = d.teams;
+    
+    document.getElementById('home-teams').innerHTML = d.teams.map(t => `
+      <div class="card" style="display:flex;align-items:center;gap:16px;margin-bottom:12px;">
+        <div class="team-emoji" style="background:${t.color}20;">${t.emoji}</div>
+        <div style="flex:1;">
+          <div style="font-size:18px;font-weight:700;">${t.name}</div>
+          <div style="font-size:13px;color:#6b7280;margin-top:4px;"><i class="fas fa-star" style="color:#f59e0b;margin-right:4px;"></i>${t.points||0} คะแนน</div>
         </div>
       </div>
-      <div style="display:flex;gap:8px;">
-        <button onclick="editTeam(${t.id})" style="width:40px;height:40px;border-radius:12px;background:#eef2ff;color:#4f46e5;border:none;cursor:pointer;"><i class="fas fa-pen"></i></button>
-        <button onclick="delTeamConfirm(${t.id})" style="width:40px;height:40px;border-radius:12px;background:#fef2f2;color:#ef4444;border:none;cursor:pointer;"><i class="fas fa-trash"></i></button>
+    `).join('');
+    
+    const lb = document.getElementById('home-lb');
+    if (!d.leaderboard.length) lb.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.4);padding:20px;">ยังไม่มีการแข่งขัน</div>';
+    else lb.innerHTML = d.leaderboard.map((t,i) => `
+      <div style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:12px;background:rgba(255,255,255,0.05);margin-bottom:8px;">
+        <div style="width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;color:white;${i==0?'background:linear-gradient(135deg,#fbbf24,#f59e0b);':i==1?'background:linear-gradient(135deg,#9ca3af,#6b7280);':i==2?'background:linear-gradient(135deg,#b45309,#92400e);':'background:rgba(255,255,255,0.1);'}">
+          ${i<3?'<i class="fas fa-crown" style="font-size:12px;"></i>':i+1}
+        </div>
+        <div style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;background:${t.color||'#6366f1'}20;">${t.emoji}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.teamName}</div>
+          <div style="font-size:12px;color:rgba(255,255,255,0.5);">${t.played} นัด | ${t.setWon}-${t.setLost} เซต</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-size:20px;font-weight:700;color:#fbbf24;">${t.points}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.4);">คะแนน</div>
+        </div>
       </div>
-    </div>
-  `).join('');
+    `).join('');
+    
+    document.getElementById('stat-teams').textContent = d.totalTeams;
+    document.getElementById('stat-players').textContent = d.totalPlayers;
+    document.getElementById('stat-matches').textContent = d.totalMatches;
+  });
 }
 
-async function loadPlayers() {
-  const r = await call('getPlayers');
-  players = r.data;
-  renderPlayers();
-  updateTeamSelect();
+function loadTeams() {
+  call('getTeams', function(r) {
+    teams = r.data;
+    const el = document.getElementById('teams-list');
+    if (!teams.length) el.innerHTML = '<div class="empty">ยังไม่มีทีม</div>';
+    else el.innerHTML = teams.map(t => `
+      <div class="card" style="display:flex;align-items:center;gap:16px;">
+        <div style="width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:28px;background:${t.color}20;">${t.emoji}</div>
+        <div style="flex:1;">
+          <div style="font-size:16px;font-weight:700;">${t.name}</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+            <span style="width:16px;height:16px;border-radius:50%;background:${t.color};display:inline-block;"></span>
+            <span style="font-size:12px;color:#9ca3af;">${t.color}</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button onclick="editTeam(${t.id})" style="width:40px;height:40px;border-radius:12px;background:#eef2ff;color:#4f46e5;border:none;cursor:pointer;"><i class="fas fa-pen"></i></button>
+          <button onclick="delTeamConfirm(${t.id})" style="width:40px;height:40px;border-radius:12px;background:#fef2f2;color:#ef4444;border:none;cursor:pointer;"><i class="fas fa-trash"></i></button>
+        </div>
+      </div>
+    `).join('');
+  });
+}
+
+function loadPlayers() {
+  call('getPlayers', function(r) {
+    players = r.data;
+    renderPlayers();
+    updateTeamSelect();
+  });
 }
 
 function renderPlayers() {
@@ -347,47 +442,48 @@ function filterPlayers(f) {
   renderPlayers();
 }
 
-async function loadMatches() {
-  const r = await call('getMatches');
-  matches = r.data;
-  const el = document.getElementById('matches-list');
-  if (!matches.length) el.innerHTML = '<div class="empty">ยังไม่มีการแข่งขัน</div>';
-  else el.innerHTML = matches.map(m => {
-    const t1 = teams.find(t=>t.id==m.team1Id), t2 = teams.find(t=>t.id==m.team2Id);
-    const w1 = m.sets.filter(s=>s[0]>s[1]).length, w2 = m.sets.filter(s=>s[1]>s[0]).length;
-    return `
-    <div class="card" style="margin-bottom:16px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <span style="font-size:12px;color:#6b7280;background:#f3f4f6;padding:4px 12px;border-radius:999px;"><i class="far fa-calendar" style="margin-right:4px;"></i>${m.date}</span>
-        <span style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:999px;${w1>w2?'background:#dbeafe;color:#1e40af;':'background:#fee2e2;color:#991b1b;'}">${w1} - ${w2}</span>
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-        <div style="flex:1;text-align:center;">
-          <div style="width:48px;height:48px;border-radius:14px;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:24px;background:${t1?.color||'#6366f1'}20;">${t1?.emoji||'?'}</div>
-          <div style="font-size:13px;font-weight:600;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;">${t1?.name||'ทีมที่ถูกลบ'}</div>
+function loadMatches() {
+  call('getMatches', function(r) {
+    matches = r.data;
+    const el = document.getElementById('matches-list');
+    if (!matches.length) el.innerHTML = '<div class="empty">ยังไม่มีการแข่งขัน</div>';
+    else el.innerHTML = matches.map(m => {
+      const t1 = teams.find(t=>t.id==m.team1Id), t2 = teams.find(t=>t.id==m.team2Id);
+      const w1 = m.sets.filter(s=>s[0]>s[1]).length, w2 = m.sets.filter(s=>s[1]>s[0]).length;
+      return `
+      <div class="card" style="margin-bottom:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <span style="font-size:12px;color:#6b7280;background:#f3f4f6;padding:4px 12px;border-radius:999px;"><i class="far fa-calendar" style="margin-right:4px;"></i>${m.date}</span>
+          <span style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:999px;${w1>w2?'background:#dbeafe;color:#1e40af;':'background:#fee2e2;color:#991b1b;'}">${w1} - ${w2}</span>
         </div>
-        <div style="padding:0 16px;"><div style="background:linear-gradient(135deg,#f59e0b,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:800;font-size:20px;">VS</div></div>
-        <div style="flex:1;text-align:center;">
-          <div style="width:48px;height:48px;border-radius:14px;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:24px;background:${t2?.color||'#6366f1'}20;">${t2?.emoji||'?'}</div>
-          <div style="font-size:13px;font-weight:600;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;">${t2?.name||'ทีมที่ถูกลบ'}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div style="flex:1;text-align:center;">
+            <div style="width:48px;height:48px;border-radius:14px;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:24px;background:${t1?.color||'#6366f1'}20;">${t1?.emoji||'?'}</div>
+            <div style="font-size:13px;font-weight:600;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;">${t1?.name||'ทีมที่ถูกลบ'}</div>
+          </div>
+          <div style="padding:0 16px;"><div style="background:linear-gradient(135deg,#f59e0b,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:800;font-size:20px;">VS</div></div>
+          <div style="flex:1;text-align:center;">
+            <div style="width:48px;height:48px;border-radius:14px;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;font-size:24px;background:${t2?.color||'#6366f1'}20;">${t2?.emoji||'?'}</div>
+            <div style="font-size:13px;font-weight:600;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;">${t2?.name||'ทีมที่ถูกลบ'}</div>
+          </div>
         </div>
-      </div>
-      <div style="background:#f9fafb;border-radius:12px;padding:12px;margin-bottom:12px;">
-        <div style="font-size:12px;font-weight:600;color:#6b7280;margin-bottom:8px;">ผลแต่ละเซต</div>
-        <div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap;">
-          ${m.sets.map((s,i)=>`
-            <div style="text-align:center;">
-              <div style="font-size:10px;color:#9ca3af;margin-bottom:4px;">เซต ${i+1}</div>
-              <div style="font-size:18px;font-weight:700;${s[0]>s[1]?'color:#4f46e5;':'color:#9ca3af;'}">${s[0]}</div>
-              <div style="font-size:12px;color:#d1d5db;">-</div>
-              <div style="font-size:18px;font-weight:700;${s[1]>s[0]?'color:#4f46e5;':'color:#9ca3af;'}">${s[1]}</div>
-            </div>
-          `).join('')}
+        <div style="background:#f9fafb;border-radius:12px;padding:12px;margin-bottom:12px;">
+          <div style="font-size:12px;font-weight:600;color:#6b7280;margin-bottom:8px;">ผลแต่ละเซต</div>
+          <div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap;">
+            ${m.sets.map((s,i)=>`
+              <div style="text-align:center;">
+                <div style="font-size:10px;color:#9ca3af;margin-bottom:4px;">เซต ${i+1}</div>
+                <div style="font-size:18px;font-weight:700;${s[0]>s[1]?'color:#4f46e5;':'color:#9ca3af;'}">${s[0]}</div>
+                <div style="font-size:12px;color:#d1d5db;">-</div>
+                <div style="font-size:18px;font-weight:700;${s[1]>s[0]?'color:#4f46e5;':'color:#9ca3af;'}">${s[1]}</div>
+              </div>
+            `).join('')}
+          </div>
         </div>
+        <button onclick="delMatchConfirm(${m.id})" style="width:100%;padding:10px;border:1px solid #fecaca;border-radius:10px;color:#ef4444;font-size:14px;font-weight:500;background:transparent;cursor:pointer;"><i class="fas fa-trash" style="margin-right:6px;"></i>ลบ</button>
       </div>
-      <button onclick="delMatchConfirm(${m.id})" style="width:100%;padding:10px;border:1px solid #fecaca;border-radius:10px;color:#ef4444;font-size:14px;font-weight:500;background:transparent;cursor:pointer;"><i class="fas fa-trash" style="margin-right:6px;"></i>ลบ</button>
-    </div>
-  `}).join('');
+    `}).join('');
+  });
 }
 
 // === TEAM SHEET ===
@@ -426,17 +522,19 @@ function updateTeamPreview() {
   el.textContent = selEmoji; el.style.background = selColor+'20'; el.style.color = selColor;
 }
 
-async function saveTeam() {
+function saveTeam() {
   const name = document.getElementById('team-name').value.trim();
   if (!name) { toast('กรุณาใส่ชื่อทีม', true); return; }
-  await call('saveTeam', 'POST', {id:curId, name, emoji:selEmoji, color:selColor});
-  closeSheets(); loadTeams(); toast('บันทึกสำเร็จ');
+  callSimple('saveTeam', function() {
+    closeSheets(); loadTeams(); toast('บันทึกสำเร็จ');
+  }, 'POST', {id:curId, name, emoji:selEmoji, color:selColor});
 }
 
 function delTeamConfirm(id) { if(confirm('ลบทีมนี้?')) delTeam(id); }
-async function delTeam(id) {
-  await call('deleteTeam', 'POST', {id});
-  loadTeams(); toast('ลบทีมสำเร็จ');
+function delTeam(id) {
+  callSimple('deleteTeam', function() {
+    loadTeams(); toast('ลบทีมสำเร็จ');
+  }, 'POST', {id});
 }
 
 // === PLAYER SHEET ===
@@ -459,33 +557,37 @@ function openPlayerSheet(id) {
   openSheet('sheet-player');
 }
 
-async function savePlayer() {
+function savePlayer() {
   const name = document.getElementById('player-name').value.trim();
   if (!name) { toast('กรุณาใส่ชื่อผู้เล่น', true); return; }
-  await call('savePlayer', 'POST', {
+  callSimple('savePlayer', function() {
+    closeSheets(); loadPlayers(); toast('บันทึกสำเร็จ');
+  }, 'POST', {
     id: curId,
     name,
     number: parseInt(document.getElementById('player-number').value)||0,
     position: document.getElementById('player-position').value,
     teamId: document.getElementById('player-team').value
   });
-  closeSheets(); loadPlayers(); toast('บันทึกสำเร็จ');
 }
 
-async function updPos(id, pos) {
-  await call('updatePlayerPosition', 'POST', {id, position:pos});
-  loadPlayers(); toast('อัปเดตตำแหน่งสำเร็จ');
+function updPos(id, pos) {
+  callSimple('updatePlayerPosition', function() {
+    loadPlayers(); toast('อัปเดตตำแหน่งสำเร็จ');
+  }, 'POST', {id, position:pos});
 }
 
-async function updTeam(id, tid) {
-  await call('updatePlayerTeam', 'POST', {id, teamId:tid});
-  loadPlayers(); toast('อัปเดตทีมสำเร็จ');
+function updTeam(id, tid) {
+  callSimple('updatePlayerTeam', function() {
+    loadPlayers(); toast('อัปเดตทีมสำเร็จ');
+  }, 'POST', {id, teamId:tid});
 }
 
 function delPlayerConfirm(id) { if(confirm('ลบผู้เล่นนี้?')) delPlayer(id); }
-async function delPlayer(id) {
-  await call('deletePlayer', 'POST', {id});
-  loadPlayers(); toast('ลบผู้เล่นสำเร็จ');
+function delPlayer(id) {
+  callSimple('deletePlayer', function() {
+    loadPlayers(); toast('ลบผู้เล่นสำเร็จ');
+  }, 'POST', {id});
 }
 
 function updateTeamSelect() {
@@ -534,7 +636,7 @@ function renumberSets() {
   document.querySelectorAll('.set-row').forEach((r,i)=>r.querySelector('span').textContent = `เซตที่ ${i+1}`);
 }
 
-async function saveMatch() {
+function saveMatch() {
   const date = document.getElementById('match-date').value;
   const t1 = document.getElementById('match-team1').value;
   const t2 = document.getElementById('match-team2').value;
@@ -548,14 +650,16 @@ async function saveMatch() {
     if (a > 0 || b > 0) sets.push([a, b]);
   });
   
-  await call('saveMatch', 'POST', {date, team1Id:parseInt(t1), team2Id:parseInt(t2), sets});
-  closeSheets(); loadMatches(); toast('บันทึกผลสำเร็จ');
+  callSimple('saveMatch', function() {
+    closeSheets(); loadMatches(); toast('บันทึกผลสำเร็จ');
+  }, 'POST', {date, team1Id:parseInt(t1), team2Id:parseInt(t2), sets});
 }
 
 function delMatchConfirm(id) { if(confirm('ลบแมตช์นี้?')) delMatch(id); }
-async function delMatch(id) {
-  await call('deleteMatch', 'POST', {id});
-  loadMatches(); toast('ลบแมตช์สำเร็จ');
+function delMatch(id) {
+  callSimple('deleteMatch', function() {
+    loadMatches(); toast('ลบแมตช์สำเร็จ');
+  }, 'POST', {id});
 }
 
 // === UI ===
