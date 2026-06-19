@@ -964,14 +964,14 @@
             headers: {
                 'Content-Type': 'application/json',
             },
-            mode: 'cors', // เพิ่มบรรทัดนี้
+            // ไม่ต้องใส่ mode: 'cors' เพราะเป็น default อยู่แล้ว
         };
         
         if (method === 'POST' && data) {
             options.body = JSON.stringify(data);
         }
         
-        console.log('Fetching:', url.toString()); // Debug
+        console.log('Fetching:', url.toString());
         
         const response = await fetch(url.toString(), options);
         
@@ -980,7 +980,7 @@
         }
         
         const result = await response.json();
-        console.log('Response:', result); // Debug
+        console.log('Response:', result);
         
         if (result.error) throw new Error(result.error);
         return result;
@@ -992,7 +992,6 @@
         showLoading(false);
     }
 }
-
         // ==================== NAVIGATION ====================
         function navigateTo(page) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
