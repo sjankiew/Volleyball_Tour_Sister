@@ -38,8 +38,30 @@ export default async function handler(request, response) {
       fetchOptions.body = JSON.stringify(request.body);
     }
     
+    console.log('Proxying to:', url.toString());
+    console.log('Method:', request.method);
+    
     const googleResponse = await fetch(url.toString(), fetchOptions);
-    const data = await googleResponse.json();
+    
+    // ตรวจสอบว่า response เป็น JSON หรือ redirect
+    const contentType = googleResponse.headers.get('content-type');
+    console.log('Google response content-type:', contentType);
+    
+    let data;
+    if (contentType && contentType.includes('application/json')) {
+      data = await googleResponse.json();
+    } else {
+      // ถ้าไม่ใช่ JSON ให้อ่านเป็น text
+      const text = await googleResponse.text();
+      console.log('Google response text:', text.substring(0, 200));
+      
+      // ลอง parse เป็น JSON
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        data = { error: 'Invalid response from Google Script', raw: text.substring(0, 500) };
+      }
+    }
     
     // ส่ง response กลับไปยัง browser
     response.status(200).json(data);
@@ -48,7 +70,8 @@ export default async function handler(request, response) {
     console.error('Proxy Error:', error);
     response.status(500).json({
       error: 'Proxy Error',
-      message: error.message
+      message: error.message,
+      stack: error.stack
     });
   }
 }
