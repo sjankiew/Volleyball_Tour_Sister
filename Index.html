@@ -953,11 +953,12 @@
         let selectedColor = '#ef4444';
 
         // ==================== API ====================
-       async function api(action, method = 'GET', data = null) {
+       // ==================== API ====================
+async function api(action, method = 'GET', data = null) {
     showLoading(true);
     try {
         // ใช้ proxy แทนการต่อ Google ตรงๆ
-        const url = new URL(API_URL, window.location.origin);
+        const url = new URL('/api/proxy', window.location.origin);
         url.searchParams.append('action', action);
         
         const options = { 
@@ -972,15 +973,21 @@
         }
         
         console.log('Fetching:', url.toString());
+        console.log('Options:', JSON.stringify(options, null, 2));
         
         const response = await fetch(url.toString(), options);
         
+        console.log('Response status:', response.status);
+        console.log('Response headers:', [...response.headers.entries()]);
+        
         if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Error response:', errorText);
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
         const result = await response.json();
-        console.log('Response:', result);
+        console.log('Response data:', result);
         
         if (result.error) throw new Error(result.error);
         return result;
