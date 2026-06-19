@@ -1,0 +1,1611 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Volleyball Team Manager</title>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { 
+            font-family: 'Kanit', sans-serif; 
+            -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
+            color: white;
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+        
+        /* Glass Effects */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            color: #1f2937;
+        }
+        
+        /* Header */
+        .app-header {
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            padding: 12px 16px;
+        }
+        
+        .app-header .logo-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(251, 191, 36, 0.3);
+        }
+        
+        /* Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 30;
+            padding-bottom: env(safe-area-inset-bottom, 0);
+        }
+        
+        .nav-item {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 16px;
+            color: rgba(255,255,255,0.5);
+            transition: all 0.3s;
+            background: none;
+            border: none;
+            font-size: 10px;
+            cursor: pointer;
+        }
+        
+        .nav-item.active {
+            color: #fbbf24;
+        }
+        
+        .nav-item.active::after {
+            content: '';
+            position: absolute;
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 24px;
+            height: 3px;
+            background: #fbbf24;
+            border-radius: 2px;
+        }
+        
+        .nav-item i { font-size: 20px; }
+        
+        /* Pages */
+        .page { 
+            display: none; 
+            animation: fadeIn 0.3s ease;
+            padding: 16px;
+            padding-bottom: 100px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .page.active { display: block; }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Cards */
+        .team-card, .player-card, .match-card {
+            transition: transform 0.2s;
+        }
+        
+        .team-card:active, .player-card:active {
+            transform: scale(0.98);
+        }
+        
+        .team-emoji-box {
+            width: 64px;
+            height: 64px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            flex-shrink: 0;
+        }
+        
+        .player-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 18px;
+            position: relative;
+            flex-shrink: 0;
+        }
+        
+        .player-number-badge {
+            position: absolute;
+            bottom: -4px;
+            right: -4px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 700;
+            color: #374151;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        /* Badges */
+        .badge {
+            font-size: 11px;
+            padding: 2px 10px;
+            border-radius: 999px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 6px center;
+            padding-right: 18px;
+        }
+        
+        .badge-unset { background: #f3f4f6; color: #6b7280; }
+        .badge-setter { background: #fef3c7; color: #92400e; }
+        .badge-outside { background: #dbeafe; color: #1e40af; }
+        .badge-opposite { background: #fce7f3; color: #9d174d; }
+        .badge-middle { background: #d1fae5; color: #065f46; }
+        .badge-libero { background: #fee2e2; color: #991b1b; }
+        
+        .badge-team {
+            background: #f3f4f6;
+            color: #4b5563;
+            font-size: 11px;
+            padding: 2px 10px;
+            border-radius: 999px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 6px center;
+            padding-right: 18px;
+        }
+        
+        /* Filter Chips */
+        .filter-chip {
+            padding: 8px 16px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: none;
+            font-size: 13px;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .filter-chip.active {
+            background: #4f46e5;
+        }
+        
+        /* Bottom Sheet */
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 40;
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .overlay.show { 
+            display: block; 
+            opacity: 1;
+        }
+        
+        .bottom-sheet {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            border-radius: 24px 24px 0 0;
+            padding: 24px;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+            z-index: 50;
+            max-height: 85vh;
+            overflow-y: auto;
+            color: #1f2937;
+        }
+        
+        .bottom-sheet.open {
+            transform: translateY(0);
+        }
+        
+        .sheet-handle {
+            width: 48px;
+            height: 4px;
+            background: #e5e7eb;
+            border-radius: 2px;
+            margin: 0 auto 16px;
+        }
+        
+        /* Form Elements */
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        
+        .form-input:focus {
+            border-color: #6366f1;
+        }
+        
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: #6b7280;
+            margin-bottom: 8px;
+        }
+        
+        .btn-primary {
+            width: 100%;
+            padding: 14px;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary:active { transform: scale(0.98); }
+        
+        .btn-secondary {
+            width: 100%;
+            padding: 14px;
+            background: white;
+            color: #6b7280;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .btn-danger {
+            width: 100%;
+            padding: 14px;
+            background: white;
+            color: #ef4444;
+            border: 2px solid #fecaca;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 12px;
+        }
+        
+        /* Emoji Picker */
+        .emoji-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 8px;
+            background: #f9fafb;
+            border-radius: 12px;
+        }
+        
+        .emoji-btn {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            background: white;
+            border: 2px solid transparent;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .emoji-btn:hover { transform: scale(1.1); }
+        .emoji-btn.selected { 
+            border-color: #6366f1; 
+            background: #eef2ff;
+        }
+        
+        /* Color Picker */
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+        }
+        
+        .color-btn {
+            aspect-ratio: 1;
+            border-radius: 16px;
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .color-btn.selected {
+            border-color: white;
+            box-shadow: 0 0 0 3px #6366f1;
+            transform: scale(1.05);
+        }
+        
+        .color-btn .check {
+            color: white;
+            font-size: 16px;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        
+        /* Score Inputs */
+        .score-input {
+            width: 60px;
+            height: 60px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: 700;
+            border: 2px solid #e5e7eb;
+            border-radius: 16px;
+            outline: none;
+        }
+        
+        .score-input:focus { border-color: #6366f1; }
+        
+        /* Set Row */
+        .set-row {
+            background: #f9fafb;
+            border-radius: 16px;
+            padding: 16px;
+        }
+        
+        /* Leaderboard */
+        .rank-badge {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        
+        .rank-1 { background: linear-gradient(135deg, #fbbf24, #f59e0b); color: white; }
+        .rank-2 { background: linear-gradient(135deg, #9ca3af, #6b7280); color: white; }
+        .rank-3 { background: linear-gradient(135deg, #b45309, #92400e); color: white; }
+        .rank-other { background: rgba(255,255,255,0.1); color: white; }
+        
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-20px);
+            background: #1f2937;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.3s;
+            z-index: 100;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        
+        /* Loading */
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(251, 191, 36, 0.3);
+            border-top-color: #fbbf24;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 60;
+            background: rgba(15, 12, 41, 0.8);
+            backdrop-filter: blur(4px);
+        }
+        
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: rgba(255,255,255,0.5);
+        }
+        
+        /* Scrollable filters */
+        .filters-scroll {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        
+        .filters-scroll::-webkit-scrollbar { display: none; }
+        
+        /* VS Divider */
+        .vs-text {
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 800;
+            font-size: 20px;
+        }
+        
+        /* Section Header */
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+        
+        .section-title {
+            font-size: 20px;
+            font-weight: 700;
+        }
+        
+        .btn-add {
+            background: #fbbf24;
+            color: #1e1b4b;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 15px rgba(251, 191, 36, 0.3);
+        }
+        
+        .btn-add:active { transform: scale(0.95); }
+        
+        /* Match Card */
+        .match-teams {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+        
+        .match-team {
+            flex: 1;
+            text-align: center;
+        }
+        
+        .match-team-box {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin: 0 auto 8px;
+        }
+        
+        .match-team-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #374151;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            padding: 0 4px;
+        }
+        
+        .match-score-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        
+        .score-win { background: #dbeafe; color: #1e40af; }
+        .score-lose { background: #fee2e2; color: #991b1b; }
+        
+        /* Sets display */
+        .sets-grid {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        
+        .set-item {
+            text-align: center;
+        }
+        
+        .set-label {
+            font-size: 10px;
+            color: #9ca3af;
+            margin-bottom: 4px;
+        }
+        
+        .set-score {
+            font-size: 18px;
+            font-weight: 700;
+        }
+        
+        .set-score.win { color: #4f46e5; }
+        .set-score.lose { color: #9ca3af; }
+        
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-cols: 3;
+            gap: 16px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+            margin-top: 4px;
+        }
+        
+        /* Position Select in Form */
+        .position-select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 16px;
+            background: white;
+            outline: none;
+            cursor: pointer;
+        }
+        
+        .position-select:focus { border-color: #6366f1; }
+        
+        /* Responsive */
+        @media (min-width: 640px) {
+            .page { padding: 24px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="app-header glass-panel">
+        <div style="display: flex; align-items: center; justify-content: space-between; max-width: 600px; margin: 0 auto;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div class="logo-icon">
+                    <i class="fas fa-volleyball-ball" style="color: white; font-size: 20px;"></i>
+                </div>
+                <div>
+                    <h1 style="font-size: 18px; font-weight: 700; margin: 0; line-height: 1.2;">Volleyball Manager</h1>
+                    <p style="font-size: 12px; color: rgba(255,255,255,0.5); margin: 0;">จัดการทีมวอลเลย์บอล</p>
+                </div>
+            </div>
+            <button onclick="showNotification()" style="width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                <i class="fas fa-bell"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main>
+        <!-- PAGE: HOME -->
+        <div id="page-home" class="page active">
+            <div class="section-header">
+                <h2 class="section-title">ทีมทั้งหมด</h2>
+                <button class="btn-add" onclick="openTeamSheet()">
+                    <i class="fas fa-plus"></i> เพิ่มทีม
+                </button>
+            </div>
+            
+            <div id="home-teams-list"></div>
+            
+            <!-- Leaderboard -->
+            <div style="margin-top: 24px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                    <h3 style="font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-crown" style="color: #fbbf24;"></i> ตารางคะแนน
+                    </h3>
+                    <span style="font-size: 12px; color: rgba(255,255,255,0.4);">เรียงตามคะแนน</span>
+                </div>
+                <div id="home-leaderboard" class="glass-panel" style="border-radius: 16px; padding: 16px;"></div>
+            </div>
+            
+            <!-- Stats -->
+            <div style="margin-top: 24px;">
+                <h3 style="font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px;">สถิติล่าสุด</h3>
+                <div class="glass-panel" style="border-radius: 16px; padding: 20px;">
+                    <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+                        <div>
+                            <div class="stat-value" style="color: #fbbf24;" id="stat-teams">0</div>
+                            <div class="stat-label">ทีม</div>
+                        </div>
+                        <div>
+                            <div class="stat-value" style="color: #34d399;" id="stat-players">0</div>
+                            <div class="stat-label">ผู้เล่น</div>
+                        </div>
+                        <div>
+                            <div class="stat-value" style="color: #fb7185;" id="stat-matches">0</div>
+                            <div class="stat-label">แมตช์</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE: TEAMS -->
+        <div id="page-teams" class="page">
+            <div class="section-header">
+                <h2 class="section-title">จัดการทีม</h2>
+                <button class="btn-add" onclick="openTeamSheet()" style="width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+            <div id="teams-list"></div>
+        </div>
+
+        <!-- PAGE: PLAYERS -->
+        <div id="page-players" class="page">
+            <div class="section-header">
+                <h2 class="section-title">รายชื่อผู้เล่น</h2>
+                <button class="btn-add" onclick="openPlayerSheet()" style="width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-plus"></i>
+                </button>
+            </div>
+            
+            <!-- Filters -->
+            <div class="filters-scroll" style="margin-bottom: 16px;">
+                <button class="filter-chip active" onclick="filterPlayers('all')" data-filter="all">ทั้งหมด</button>
+                <button class="filter-chip" onclick="filterPlayers('unset')" data-filter="unset">ยังไม่ระบุ</button>
+                <button class="filter-chip" onclick="filterPlayers('setter')" data-filter="setter">เซตเตอร์</button>
+                <button class="filter-chip" onclick="filterPlayers('outside')" data-filter="outside">ตบหน้า</button>
+                <button class="filter-chip" onclick="filterPlayers('opposite')" data-filter="opposite">ตบตรงข้าม</button>
+                <button class="filter-chip" onclick="filterPlayers('middle')" data-filter="middle">ตบกลาง</button>
+                <button class="filter-chip" onclick="filterPlayers('libero')" data-filter="libero">ลิเบโร่</button>
+            </div>
+            
+            <div id="players-list"></div>
+        </div>
+
+        <!-- PAGE: MATCHES -->
+        <div id="page-matches" class="page">
+            <div class="section-header">
+                <h2 class="section-title">ผลการแข่งขัน</h2>
+                <button class="btn-add" onclick="openMatchSheet()">
+                    <i class="fas fa-plus"></i> เพิ่มแมตช์
+                </button>
+            </div>
+            <div id="matches-list"></div>
+        </div>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav glass-panel">
+        <div style="max-width: 600px; margin: 0 auto; display: flex; justify-content: space-around; align-items: center;">
+            <button class="nav-item active" onclick="navigateTo('home')" data-page="home">
+                <i class="fas fa-home"></i>
+                <span>หน้าแรก</span>
+            </button>
+            <button class="nav-item" onclick="navigateTo('teams')" data-page="teams">
+                <i class="fas fa-users"></i>
+                <span>ทีม</span>
+            </button>
+            <button class="nav-item" onclick="navigateTo('players')" data-page="players">
+                <i class="fas fa-running"></i>
+                <span>ผู้เล่น</span>
+            </button>
+            <button class="nav-item" onclick="navigateTo('matches')" data-page="matches">
+                <i class="fas fa-trophy"></i>
+                <span>แมตช์</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Overlay -->
+    <div id="overlay" class="overlay" onclick="closeAllSheets()"></div>
+
+    <!-- Loading -->
+    <div id="loading" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast">
+        <i class="fas fa-check-circle" style="color: #34d399;"></i>
+        <span id="toast-message">บันทึกสำเร็จ</span>
+    </div>
+
+    <!-- BOTTOM SHEET: TEAM -->
+    <div id="sheet-team" class="bottom-sheet">
+        <div class="sheet-handle"></div>
+        <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 20px;" id="team-sheet-title">เพิ่มทีมใหม่</h3>
+        
+        <div style="margin-bottom: 16px;">
+            <label class="form-label">Emoji ประจำทีม</label>
+            <div style="display: flex; justify-content: center; margin-bottom: 12px;">
+                <div id="team-emoji-preview" style="width: 80px; height: 80px; border-radius: 20px; background: #f3f4f6; display: flex; align-items: center; justify-content: center; font-size: 40px;">
+                    🏐
+                </div>
+            </div>
+            <div class="emoji-grid" id="emoji-grid"></div>
+        </div>
+        
+        <div style="margin-bottom: 16px;">
+            <label class="form-label">ชื่อทีม</label>
+            <input type="text" id="team-name" class="form-input" placeholder="เช่น สุราษฎร์ วอลเลย์บอล">
+        </div>
+        
+        <div style="margin-bottom: 16px;">
+            <label class="form-label">ธีมสี</label>
+            <div class="color-grid" id="color-grid"></div>
+        </div>
+        
+        <div style="display: flex; gap: 12px; margin-top: 24px;">
+            <button class="btn-secondary" onclick="closeAllSheets()" style="flex: 1;">ยกเลิก</button>
+            <button class="btn-primary" onclick="saveTeam()" style="flex: 1;">บันทึก</button>
+        </div>
+        <button class="btn-danger" id="btn-delete-team" onclick="deleteCurrentTeam()" style="display: none;">ลบทีมนี้</button>
+    </div>
+
+    <!-- BOTTOM SHEET: PLAYER -->
+    <div id="sheet-player" class="bottom-sheet">
+        <div class="sheet-handle"></div>
+        <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 20px;" id="player-sheet-title">เพิ่มผู้เล่น</h3>
+        
+        <div style="margin-bottom: 16px;">
+            <label class="form-label">ชื่อผู้เล่น</label>
+            <input type="text" id="player-name" class="form-input" placeholder="ชื่อ-นามสกุล">
+        </div>
+        
+        <div style="margin-bottom: 16px;">
+            <label class="form-label">หมายเลข</label>
+            <input type="number" id="player-number" class="form-input" placeholder="เช่น 8">
+        </div>
+        
+        <div style="margin-bottom: 16px;">
+            <label class="form-label">ตำแหน่ง (เริ่มต้น: ยังไม่ระบุ)</label>
+            <select id="player-position" class="position-select">
+                <option value="unset" selected>ยังไม่ระบุตำแหน่ง</option>
+                <option value="setter">เซตเตอร์ (Setter)</option>
+                <option value="outside">ตบหน้า (Outside Hitter)</option>
+                <option value="opposite">ตบตรงข้าม (Opposite)</option>
+                <option value="middle">ตบกลาง (Middle Blocker)</option>
+                <option value="libero">ลิเบโร่ (Libero)</option>
+            </select>
+        </div>
+        
+        <div style="margin-bottom: 16px;">
+            <label class="form-label">สังกัดทีม</label>
+            <select id="player-team" class="position-select">
+                <option value="">เลือกทีม</option>
+            </select>
+        </div>
+        
+        <div style="display: flex; gap: 12px; margin-top: 24px;">
+            <button class="btn-secondary" onclick="closeAllSheets()" style="flex: 1;">ยกเลิก</button>
+            <button class="btn-primary" onclick="savePlayer()" style="flex: 1;">บันทึก</button>
+        </div>
+        <button class="btn-danger" id="btn-delete-player" onclick="deleteCurrentPlayer()" style="display: none;">ลบผู้เล่นนี้</button>
+    </div>
+
+    <!-- BOTTOM SHEET: MATCH -->
+    <div id="sheet-match" class="bottom-sheet">
+        <div class="sheet-handle"></div>
+        <h3 style="font-size: 20px; font-weight: 700; margin-bottom: 20px;">บันทึกผลการแข่งขัน</h3>
+        
+        <div style="margin-bottom: 16px;">
+            <label class="form-label">วันที่แข่งขัน</label>
+            <input type="date" id="match-date" class="form-input">
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+            <div>
+                <label class="form-label">ทีมเจ้าบ้าน</label>
+                <select id="match-team1" class="position-select">
+                    <option value="">เลือกทีม</option>
+                </select>
+            </div>
+            <div>
+                <label class="form-label">ทีมเยือน</label>
+                <select id="match-team2" class="position-select">
+                    <option value="">เลือกทีม</option>
+                </select>
+            </div>
+        </div>
+        
+        <div id="sets-container" style="margin-bottom: 16px;"></div>
+        
+        <button onclick="addSetRow()" style="width: 100%; padding: 12px; border: 2px dashed #c7d2fe; border-radius: 12px; color: #4f46e5; font-weight: 600; background: transparent; cursor: pointer; margin-bottom: 16px;">
+            <i class="fas fa-plus"></i> เพิ่มเซต
+        </button>
+        
+        <div style="display: flex; gap: 12px; margin-top: 24px;">
+            <button class="btn-secondary" onclick="closeAllSheets()" style="flex: 1;">ยกเลิก</button>
+            <button class="btn-primary" onclick="saveMatch()" style="flex: 1;">บันทึกผล</button>
+        </div>
+    </div>
+
+    <script>
+        // ==================== CONFIG ====================
+        const API_URL = 'https://script.google.com/macros/s/AKfycbyVWoq4ntRL4ljuH4bRjyrvLacMpLfSA8W73mY6S9pZ7g93A34X4W73AFIjbRZcBYza/exec';
+        
+        const EMOJIS = ['🏐','⚡','🔥','⭐','🦅','🐯','🐉','🦁','🦈','🐊','🐍','🦉','🐺','🐻','🐼','🦊','🐰','🐱','🐶','🐴','🦄','🦋','🌟','💎','👑','🎯','🏆','🥇','🥈','🥉','🏅','🎖️','⚔️','🛡️','🚀','🛸','🌙','☀️','🌊','🔱','⚓','🎪','🎭','🎨','🎸','🎺','🥁','🏹','🎳'];
+        
+        const THEME_COLORS = [
+            '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16',
+            '#22c55e', '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9',
+            '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef',
+            '#ec4899', '#f43f5e', '#78716c', '#64748b', '#0f172a'
+        ];
+        
+        const POSITION_LABELS = {
+            unset: 'ยังไม่ระบุ',
+            setter: 'เซตเตอร์',
+            outside: 'ตบหน้า',
+            opposite: 'ตบตรงข้าม',
+            middle: 'ตบกลาง',
+            libero: 'ลิเบโร่'
+        };
+        
+        const POSITION_CLASSES = {
+            unset: 'badge-unset',
+            setter: 'badge-setter',
+            outside: 'badge-outside',
+            opposite: 'badge-opposite',
+            middle: 'badge-middle',
+            libero: 'badge-libero'
+        };
+
+        // ==================== STATE ====================
+        let teams = [];
+        let players = [];
+        let matches = [];
+        let leaderboard = [];
+        let currentEditId = null;
+        let currentFilter = 'all';
+        let selectedEmoji = '🏐';
+        let selectedColor = '#ef4444';
+
+        // ==================== API ====================
+        async function api(action, method = 'GET', data = null) {
+            showLoading(true);
+            try {
+                const url = new URL(API_URL);
+                url.searchParams.append('action', action);
+                
+                const options = { method };
+                if (method === 'POST' && data) {
+                    options.headers = { 'Content-Type': 'application/json' };
+                    options.body = JSON.stringify(data);
+                }
+                
+                const response = await fetch(url.toString(), options);
+                const result = await response.json();
+                
+                if (result.error) throw new Error(result.error);
+                return result;
+            } catch (err) {
+                showToast(err.message, 'error');
+                throw err;
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // ==================== NAVIGATION ====================
+        function navigateTo(page) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            
+            document.getElementById(`page-${page}`).classList.add('active');
+            document.querySelector(`.nav-item[data-page="${page}"]`).classList.add('active');
+            
+            if (page === 'home') loadDashboard();
+            if (page === 'teams') loadTeams();
+            if (page === 'players') loadPlayers();
+            if (page === 'matches') loadMatches();
+        }
+
+        // ==================== LOAD DATA ====================
+        async function loadDashboard() {
+            try {
+                const res = await api('getDashboard');
+                const data = res.data;
+                
+                teams = data.teams || [];
+                players = []; // Will load separately if needed
+                matches = data.recentMatches || [];
+                leaderboard = data.leaderboard || [];
+                
+                renderHomeTeams();
+                renderLeaderboard();
+                renderStats(data);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function loadTeams() {
+            try {
+                const res = await api('getTeams');
+                teams = res.data;
+                renderTeams();
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function loadPlayers() {
+            try {
+                const res = await api('getPlayers');
+                players = res.data;
+                renderPlayers();
+                updateTeamSelects();
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function loadMatches() {
+            try {
+                const res = await api('getMatches');
+                matches = res.data;
+                renderMatches();
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        // ==================== RENDER: HOME ====================
+        function renderHomeTeams() {
+            const container = document.getElementById('home-teams-list');
+            if (!teams.length) {
+                container.innerHTML = '<div class="empty-state"><i class="fas fa-users" style="font-size: 48px; margin-bottom: 12px; opacity: 0.5;"></i><p>ยังไม่มีทีม</p></div>';
+                return;
+            }
+            
+            container.innerHTML = teams.map(team => {
+                const teamPlayers = players.filter(p => p.teamId === team.id);
+                return `
+                <div class="glass-card team-card" style="border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                        <div class="team-emoji-box" style="background: ${team.color}20; color: ${team.color};">
+                            ${team.emoji}
+                        </div>
+                        <div style="flex: 1; min-width: 0;">
+                            <h3 style="font-size: 18px; font-weight: 700; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${team.name}</h3>
+                            <div style="display: flex; align-items: center; gap: 12px; margin-top: 4px; font-size: 13px; color: #6b7280;">
+                                <span><i class="fas fa-user" style="margin-right: 4px;"></i>${teamPlayers.length} คน</span>
+                                <span style="color: #f59e0b; font-weight: 600;"><i class="fas fa-star" style="margin-right: 4px;"></i>${team.points || 0} คะแนน</span>
+                            </div>
+                        </div>
+                    </div>
+                    ${teamPlayers.length ? `
+                    <div style="display: flex; gap: 8px; margin-top: 12px; overflow-x: auto; padding-bottom: 4px;">
+                        ${teamPlayers.slice(0, 4).map(p => `
+                            <div style="display: flex; align-items: center; gap: 6px; background: #f3f4f6; border-radius: 999px; padding: 4px 12px 4px 4px; white-space: nowrap;">
+                                <div style="width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #6366f1, #8b5cf6); display: flex; align-items: center; justify-content: center; color: white; font-size: 10px; font-weight: 700;">${p.name.charAt(0)}</div>
+                                <span style="font-size: 12px; color: #4b5563;">${p.name.split(' ')[0]}</span>
+                            </div>
+                        `).join('')}
+                        ${teamPlayers.length > 4 ? `<span style="font-size: 12px; color: #9ca3af; align-self: center;">+${teamPlayers.length - 4}</span>` : ''}
+                    </div>
+                    ` : ''}
+                </div>`;
+            }).join('');
+        }
+
+        function renderLeaderboard() {
+            const container = document.getElementById('home-leaderboard');
+            if (!leaderboard.length) {
+                container.innerHTML = '<div style="text-align: center; color: rgba(255,255,255,0.4); padding: 20px; font-size: 14px;">ยังไม่มีการแข่งขัน</div>';
+                return;
+            }
+            
+            container.innerHTML = leaderboard.map((team, i) => `
+                <div style="display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; background: rgba(255,255,255,0.05); margin-bottom: 8px;">
+                    <div class="rank-badge ${i < 3 ? 'rank-' + (i+1) : 'rank-other'}">
+                        ${i < 3 ? '<i class="fas fa-crown" style="font-size: 12px;"></i>' : i + 1}
+                    </div>
+                    <div style="width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; background: ${team.color || '#6366f1'}20;">
+                        ${team.emoji || '🏐'}
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${team.teamName}</div>
+                        <div style="font-size: 12px; color: rgba(255,255,255,0.5);">${team.played || 0} นัด | ${team.setWon || 0}-${team.setLost || 0} เซต</div>
+                    </div>
+                    <div style="text-align: right; flex-shrink: 0;">
+                        <div style="font-size: 20px; font-weight: 700; color: #fbbf24;">${team.points || 0}</div>
+                        <div style="font-size: 10px; color: rgba(255,255,255,0.4);">คะแนน</div>
+                    </div>
+                    <div style="text-align: right; flex-shrink: 0; width: 48px;">
+                        <div style="font-size: 14px; font-weight: 600; color: ${(team.setDiff || 0) >= 0 ? '#34d399' : '#fb7185'};">${team.setDiff > 0 ? '+' : ''}${team.setDiff || 0}</div>
+                        <div style="font-size: 10px; color: rgba(255,255,255,0.4);">ผลต่าง</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderStats(data) {
+            document.getElementById('stat-teams').textContent = data.totalTeams || 0;
+            document.getElementById('stat-players').textContent = data.totalPlayers || 0;
+            document.getElementById('stat-matches').textContent = data.totalMatches || 0;
+        }
+
+        // ==================== RENDER: TEAMS ====================
+        function renderTeams() {
+            const container = document.getElementById('teams-list');
+            if (!teams.length) {
+                container.innerHTML = '<div class="empty-state"><i class="fas fa-users" style="font-size: 48px; margin-bottom: 12px; opacity: 0.5;"></i><p>ยังไม่มีทีม</p></div>';
+                return;
+            }
+            
+            container.innerHTML = teams.map(team => `
+                <div class="glass-card" style="border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+                    <div style="display: flex; align-items: center; gap: 16px;">
+                        <div style="width: 56px; height: 56px; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 28px; background: ${team.color}20;">
+                            ${team.emoji}
+                        </div>
+                        <div style="flex: 1;">
+                            <h3 style="font-size: 16px; font-weight: 700; margin: 0;">${team.name}</h3>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+                                <span style="width: 16px; height: 16px; border-radius: 50%; background: ${team.color}; display: inline-block;"></span>
+                                <span style="font-size: 12px; color: #9ca3af;">${team.color}</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick="editTeam(${team.id})" style="width: 40px; height: 40px; border-radius: 12px; background: #eef2ff; color: #4f46e5; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-pen" style="font-size: 14px;"></i>
+                            </button>
+                            <button onclick="confirmDeleteTeam(${team.id})" style="width: 40px; height: 40px; border-radius: 12px; background: #fef2f2; color: #ef4444; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-trash" style="font-size: 14px;"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ==================== RENDER: PLAYERS ====================
+        function renderPlayers() {
+            const container = document.getElementById('players-list');
+            let filtered = currentFilter === 'all' ? players : players.filter(p => p.position === currentFilter);
+            
+            if (!filtered.length) {
+                container.innerHTML = '<div class="empty-state"><i class="fas fa-running" style="font-size: 48px; margin-bottom: 12px; opacity: 0.5;"></i><p>ไม่พบผู้เล่น</p></div>';
+                return;
+            }
+            
+            container.innerHTML = filtered.map(player => {
+                const team = teams.find(t => t.id === player.teamId);
+                return `
+                <div class="glass-card player-card" style="border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div class="player-avatar">
+                            ${player.name.charAt(0)}
+                            <div class="player-number-badge">${player.number || '-'}</div>
+                        </div>
+                        <div style="flex: 1; min-width: 0;">
+                            <h3 style="font-size: 15px; font-weight: 700; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${player.name}</h3>
+                            <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap;">
+                                <select onchange="updatePlayerPosition(${player.id}, this.value)" class="badge ${POSITION_CLASSES[player.position || 'unset']}">
+                                    <option value="unset" ${player.position === 'unset' ? 'selected' : ''}>ยังไม่ระบุ</option>
+                                    <option value="setter" ${player.position === 'setter' ? 'selected' : ''}>เซตเตอร์</option>
+                                    <option value="outside" ${player.position === 'outside' ? 'selected' : ''}>ตบหน้า</option>
+                                    <option value="opposite" ${player.position === 'opposite' ? 'selected' : ''}>ตบตรงข้าม</option>
+                                    <option value="middle" ${player.position === 'middle' ? 'selected' : ''}>ตบกลาง</option>
+                                    <option value="libero" ${player.position === 'libero' ? 'selected' : ''}>ลิเบโร่</option>
+                                </select>
+                                <select onchange="updatePlayerTeam(${player.id}, this.value)" class="badge-team">
+                                    <option value="">ไม่มีทีม</option>
+                                    ${teams.map(t => `<option value="${t.id}" ${player.teamId === t.id ? 'selected' : ''}>${t.emoji} ${t.name}</option>`).join('')}
+                                </select>
+                            </div>
+                        </div>
+                        <button onclick="confirmDeletePlayer(${player.id})" style="width: 32px; height: 32px; border-radius: 8px; background: #fef2f2; color: #ef4444; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <i class="fas fa-trash" style="font-size: 11px;"></i>
+                        </button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function filterPlayers(position) {
+            currentFilter = position;
+            document.querySelectorAll('.filter-chip').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filter === position);
+            });
+            renderPlayers();
+        }
+
+        // ==================== RENDER: MATCHES ====================
+        function renderMatches() {
+            const container = document.getElementById('matches-list');
+            if (!matches.length) {
+                container.innerHTML = '<div class="empty-state"><i class="fas fa-trophy" style="font-size: 48px; margin-bottom: 12px; opacity: 0.5;"></i><p>ยังไม่มีการแข่งขัน</p></div>';
+                return;
+            }
+            
+            container.innerHTML = matches.map(match => {
+                const team1 = teams.find(t => t.id === match.team1Id);
+                const team2 = teams.find(t => t.id === match.team2Id);
+                const t1Wins = match.sets.filter(s => s[0] > s[1]).length;
+                const t2Wins = match.sets.filter(s => s[1] > s[0]).length;
+                
+                return `
+                <div class="glass-card match-card" style="border-radius: 16px; padding: 16px; margin-bottom: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                        <span style="font-size: 12px; color: #6b7280; background: #f3f4f6; padding: 4px 12px; border-radius: 999px;">
+                            <i class="far fa-calendar" style="margin-right: 4px;"></i>${formatDate(match.date)}
+                        </span>
+                        <span class="match-score-badge ${t1Wins > t2Wins ? 'score-win' : 'score-lose'}">
+                            ${t1Wins} - ${t2Wins}
+                        </span>
+                    </div>
+                    
+                    <div class="match-teams">
+                        <div class="match-team">
+                            <div class="match-team-box" style="background: ${team1?.color || '#6366f1'}20;">
+                                ${team1?.emoji || '?'}
+                            </div>
+                            <div class="match-team-name">${team1?.name || 'ทีมที่ถูกลบ'}</div>
+                        </div>
+                        <div style="padding: 0 16px;">
+                            <div class="vs-text">VS</div>
+                        </div>
+                        <div class="match-team">
+                            <div class="match-team-box" style="background: ${team2?.color || '#6366f1'}20;">
+                                ${team2?.emoji || '?'}
+                            </div>
+                            <div class="match-team-name">${team2?.name || 'ทีมที่ถูกลบ'}</div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #f9fafb; border-radius: 12px; padding: 12px; margin-bottom: 12px;">
+                        <div style="font-size: 12px; font-weight: 600; color: #6b7280; margin-bottom: 8px;">ผลแต่ละเซต</div>
+                        <div class="sets-grid">
+                            ${match.sets.map((set, i) => `
+                                <div class="set-item">
+                                    <div class="set-label">เซต ${i+1}</div>
+                                    <div class="set-score ${set[0] > set[1] ? 'win' : 'lose'}">${set[0]}</div>
+                                    <div style="font-size: 12px; color: #d1d5db;">-</div>
+                                    <div class="set-score ${set[1] > set[0] ? 'win' : 'lose'}">${set[1]}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    
+                    <button onclick="confirmDeleteMatch(${match.id})" style="width: 100%; padding: 10px; border: 1px solid #fecaca; border-radius: 10px; color: #ef4444; font-size: 14px; font-weight: 500; background: transparent; cursor: pointer;">
+                        <i class="fas fa-trash" style="margin-right: 6px;"></i>ลบ
+                    </button>
+                </div>`;
+            }).join('');
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+        }
+
+        // ==================== TEAM SHEET ====================
+        function openTeamSheet(teamId = null) {
+            currentEditId = teamId;
+            const title = document.getElementById('team-sheet-title');
+            const deleteBtn = document.getElementById('btn-delete-team');
+            
+            if (teamId) {
+                const team = teams.find(t => t.id === teamId);
+                title.textContent = 'แก้ไขทีม';
+                document.getElementById('team-name').value = team.name;
+                selectedEmoji = team.emoji;
+                selectedColor = team.color;
+                deleteBtn.style.display = 'block';
+            } else {
+                title.textContent = 'เพิ่มทีมใหม่';
+                document.getElementById('team-name').value = '';
+                selectedEmoji = '🏐';
+                selectedColor = '#ef4444';
+                deleteBtn.style.display = 'none';
+            }
+            
+            renderEmojiGrid();
+            renderColorGrid();
+            updateTeamPreview();
+            openSheet('sheet-team');
+        }
+
+        function editTeam(id) {
+            openTeamSheet(id);
+        }
+
+        function renderEmojiGrid() {
+            const container = document.getElementById('emoji-grid');
+            container.innerHTML = EMOJIS.map(emoji => `
+                <button class="emoji-btn ${emoji === selectedEmoji ? 'selected' : ''}" onclick="selectEmoji('${emoji}')">
+                    ${emoji}
+                </button>
+            `).join('');
+        }
+
+        function selectEmoji(emoji) {
+            selectedEmoji = emoji;
+            renderEmojiGrid();
+            updateTeamPreview();
+        }
+
+        function renderColorGrid() {
+            const container = document.getElementById('color-grid');
+            container.innerHTML = THEME_COLORS.map(color => `
+                <button class="color-btn ${color === selectedColor ? 'selected' : ''}" style="background: ${color};" onclick="selectColor('${color}')">
+                    ${color === selectedColor ? '<div class="check"><i class="fas fa-check"></i></div>' : ''}
+                </button>
+            `).join('');
+        }
+
+        function selectColor(color) {
+            selectedColor = color;
+            renderColorGrid();
+            updateTeamPreview();
+        }
+
+        function updateTeamPreview() {
+            const preview = document.getElementById('team-emoji-preview');
+            preview.textContent = selectedEmoji;
+            preview.style.background = selectedColor + '20';
+            preview.style.color = selectedColor;
+        }
+
+        async function saveTeam() {
+            const name = document.getElementById('team-name').value.trim();
+            if (!name) {
+                showToast('กรุณาใส่ชื่อทีม', 'error');
+                return;
+            }
+            
+            try {
+                await api('saveTeam', 'POST', {
+                    id: currentEditId,
+                    name,
+                    emoji: selectedEmoji,
+                    color: selectedColor
+                });
+                closeAllSheets();
+                loadTeams();
+                showToast(currentEditId ? 'แก้ไขทีมสำเร็จ' : 'เพิ่มทีมสำเร็จ');
+            } catch (e) {}
+        }
+
+        function confirmDeleteTeam(id) {
+            if (confirm('ต้องการลบทีมนี้ใช่หรือไม่?')) {
+                deleteTeam(id);
+            }
+        }
+
+        async function deleteTeam(id) {
+            try {
+                await api('deleteTeam', 'POST', { id });
+                loadTeams();
+                showToast('ลบทีมสำเร็จ');
+            } catch (e) {}
+        }
+
+        function deleteCurrentTeam() {
+            if (currentEditId) deleteTeam(currentEditId);
+        }
+
+        // ==================== PLAYER SHEET ====================
+        function openPlayerSheet(playerId = null) {
+            currentEditId = playerId;
+            const title = document.getElementById('player-sheet-title');
+            const deleteBtn = document.getElementById('btn-delete-player');
+            
+            updateTeamSelects();
+            
+            if (playerId) {
+                const player = players.find(p => p.id === playerId);
+                title.textContent = 'แก้ไขผู้เล่น';
+                document.getElementById('player-name').value = player.name;
+                document.getElementById('player-number').value = player.number || '';
+                document.getElementById('player-position').value = player.position || 'unset';
+                document.getElementById('player-team').value = player.teamId || '';
+                deleteBtn.style.display = 'block';
+            } else {
+                title.textContent = 'เพิ่มผู้เล่น';
+                document.getElementById('player-name').value = '';
+                document.getElementById('player-number').value = '';
+                document.getElementById('player-position').value = 'unset';
+                document.getElementById('player-team').value = '';
+                deleteBtn.style.display = 'none';
+            }
+            
+            openSheet('sheet-player');
+        }
+
+        async function savePlayer() {
+            const name = document.getElementById('player-name').value.trim();
+            const number = parseInt(document.getElementById('player-number').value) || 0;
+            const position = document.getElementById('player-position').value;
+            const teamId = document.getElementById('player-team').value;
+            
+            if (!name) {
+                showToast('กรุณาใส่ชื่อผู้เล่น', 'error');
+                return;
+            }
+            
+            try {
+                await api('savePlayer', 'POST', {
+                    id: currentEditId,
+                    name,
+                    number,
+                    position,
+                    teamId: teamId ? parseInt(teamId) : null
+                });
+                closeAllSheets();
+                loadPlayers();
+                showToast(currentEditId ? 'แก้ไขผู้เล่นสำเร็จ' : 'เพิ่มผู้เล่นสำเร็จ');
+            } catch (e) {}
+        }
+
+        async function updatePlayerPosition(playerId, position) {
+            try {
+                await api('updatePlayerPosition', 'POST', { id: playerId, position });
+                const player = players.find(p => p.id === playerId);
+                if (player) player.position = position;
+                renderPlayers();
+                showToast('อัปเดตตำแหน่งสำเร็จ');
+            } catch (e) {}
+        }
+
+        async function updatePlayerTeam(playerId, teamId) {
+            try {
+                await api('updatePlayerTeam', 'POST', { id: playerId, teamId: teamId ? parseInt(teamId) : null });
+                const player = players.find(p => p.id === playerId);
+                if (player) player.teamId = teamId ? parseInt(teamId) : null;
+                renderPlayers();
+                showToast('อัปเดตทีมสำเร็จ');
+            } catch (e) {}
+        }
+
+        function confirmDeletePlayer(id) {
+            if (confirm('ต้องการลบผู้เล่นนี้ใช่หรือไม่?')) {
+                deletePlayer(id);
+            }
+        }
+
+        async function deletePlayer(id) {
+            try {
+                await api('deletePlayer', 'POST', { id });
+                loadPlayers();
+                showToast('ลบผู้เล่นสำเร็จ');
+            } catch (e) {}
+        }
+
+        function deleteCurrentPlayer() {
+            if (currentEditId) deletePlayer(currentEditId);
+        }
+
+        function updateTeamSelects() {
+            const selects = document.querySelectorAll('#player-team, #match-team1, #match-team2');
+            const options = '<option value="">เลือกทีม</option>' + teams.map(t => `<option value="${t.id}">${t.emoji} ${t.name}</option>`).join('');
+            selects.forEach(s => s.innerHTML = options);
+        }
+
+        // ==================== MATCH SHEET ====================
+        function openMatchSheet() {
+            document.getElementById('match-date').value = new Date().toISOString().split('T')[0];
+            document.getElementById('match-team1').value = '';
+            document.getElementById('match-team2').value = '';
+            document.getElementById('sets-container').innerHTML = createSetRow(1);
+            updateTeamSelects();
+            openSheet('sheet-match');
+        }
+
+        function createSetRow(num) {
+            return `
+                <div class="set-row" style="margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-weight: 600; font-size: 14px;">เซตที่ ${num}</span>
+                        <button onclick="removeSetRow(this)" style="color: #ef4444; background: none; border: none; cursor: pointer;">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 16px;">
+                        <input type="number" class="score-input set-score1" placeholder="0" min="0">
+                        <span style="font-weight: 700; color: #d1d5db; font-size: 20px;">-</span>
+                        <input type="number" class="score-input set-score2" placeholder="0" min="0">
+                    </div>
+                </div>
+            `;
+        }
+
+        function addSetRow() {
+            const container = document.getElementById('sets-container');
+            const count = container.children.length + 1;
+            if (count > 5) {
+                showToast('สูงสุด 5 เซต', 'error');
+                return;
+            }
+            const div = document.createElement('div');
+            div.innerHTML = createSetRow(count);
+            container.appendChild(div.firstElementChild);
+        }
+
+        function removeSetRow(btn) {
+            const row = btn.closest('.set-row');
+            row.remove();
+            document.querySelectorAll('.set-row').forEach((row, i) => {
+                row.querySelector('span').textContent = `เซตที่ ${i + 1}`;
+            });
+        }
+
+        async function saveMatch() {
+            const date = document.getElementById('match-date').value;
+            const team1Id = parseInt(document.getElementById('match-team1').value);
+            const team2Id = parseInt(document.getElementById('match-team2').value);
+            
+            if (!date || !team1Id || !team2Id) {
+                showToast('กรุณาเลือกทีมและวันที่', 'error');
+                return;
+            }
+            if (team1Id === team2Id) {
+                showToast('ทีมต้องไม่เหมือนกัน', 'error');
+                return;
+            }
+            
+            const sets = [];
+            document.querySelectorAll('.set-row').forEach(row => {
+                const s1 = parseInt(row.querySelector('.set-score1').value) || 0;
+                const s2 = parseInt(row.querySelector('.set-score2').value) || 0;
+                if (s1 > 0 || s2 > 0) sets.push([s1, s2]);
+            });
+            
+            try {
+                await api('saveMatch', 'POST', { date, team1Id, team2Id, sets });
+                closeAllSheets();
+                loadMatches();
+                showToast('บันทึกผลการแข่งขันสำเร็จ');
+            } catch (e) {}
+        }
+
+        function confirmDeleteMatch(id) {
+            if (confirm('ต้องการลบผลการแข่งขันนี้ใช่หรือไม่?')) {
+                deleteMatch(id);
+            }
+        }
+
+        async function deleteMatch(id) {
+            try {
+                await api('deleteMatch', 'POST', { id });
+                loadMatches();
+                showToast('ลบผลการแข่งขันสำเร็จ');
+            } catch (e) {}
+        }
+
+        // ==================== UI UTILITIES ====================
+        function openSheet(id) {
+            document.getElementById('overlay').classList.add('show');
+            document.getElementById(id).classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeAllSheets() {
+            document.querySelectorAll('.bottom-sheet').forEach(s => s.classList.remove('open'));
+            document.getElementById('overlay').classList.remove('show');
+            document.body.style.overflow = '';
+        }
+
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'flex' : 'none';
+        }
+
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            const message = document.getElementById('toast-message');
+            const icon = toast.querySelector('i');
+            
+            message.textContent = msg;
+            icon.className = type === 'error' ? 'fas fa-exclamation-circle' : 'fas fa-check-circle';
+            icon.style.color = type === 'error' ? '#fb7185' : '#34d399';
+            
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+
+        function showNotification() {
+            showToast('ไม่มีการแจ้งเตือนใหม่');
+        }
+
+        // ==================== INIT ====================
+        document.addEventListener('DOMContentLoaded', () => {
+            loadDashboard();
+        });
+    </script>
+</body>
+</html>
