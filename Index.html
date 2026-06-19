@@ -953,30 +953,45 @@
         let selectedColor = '#ef4444';
 
         // ==================== API ====================
-        async function api(action, method = 'GET', data = null) {
-            showLoading(true);
-            try {
-                const url = new URL(API_URL);
-                url.searchParams.append('action', action);
-                
-                const options = { method };
-                if (method === 'POST' && data) {
-                    options.headers = { 'Content-Type': 'application/json' };
-                    options.body = JSON.stringify(data);
-                }
-                
-                const response = await fetch(url.toString(), options);
-                const result = await response.json();
-                
-                if (result.error) throw new Error(result.error);
-                return result;
-            } catch (err) {
-                showToast(err.message, 'error');
-                throw err;
-            } finally {
-                showLoading(false);
-            }
+       async function api(action, method = 'GET', data = null) {
+    showLoading(true);
+    try {
+        const url = new URL(API_URL);
+        url.searchParams.append('action', action);
+        
+        const options = { 
+            method,
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            mode: 'cors', // เพิ่มบรรทัดนี้
+        };
+        
+        if (method === 'POST' && data) {
+            options.body = JSON.stringify(data);
         }
+        
+        console.log('Fetching:', url.toString()); // Debug
+        
+        const response = await fetch(url.toString(), options);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const result = await response.json();
+        console.log('Response:', result); // Debug
+        
+        if (result.error) throw new Error(result.error);
+        return result;
+    } catch (err) {
+        console.error('API Error:', err);
+        showToast('เกิดข้อผิดพลาด: ' + err.message, 'error');
+        throw err;
+    } finally {
+        showLoading(false);
+    }
+}
 
         // ==================== NAVIGATION ====================
         function navigateTo(page) {
